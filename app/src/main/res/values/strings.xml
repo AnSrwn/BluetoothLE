@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">BluetoothLE</string>
+    <string name="startScan">Start Scanning</string>
+    <string name="noDevices">No devices found</string>
+</resources>
