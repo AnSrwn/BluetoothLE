@@ -1,6 +1,8 @@
 package com.example.user.bluetoothle
 
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.*
 import android.content.Context
@@ -11,8 +13,7 @@ import android.os.Handler
 import android.util.Log
 import android.widget.Toast
 import kotlinx.android.synthetic.main.activity_main.*
-
-
+import java.util.*
 
 
 class MainActivity : AppCompatActivity() {
@@ -22,6 +23,10 @@ class MainActivity : AppCompatActivity() {
     private var mBluetoothLeScanner: BluetoothLeScanner? = null
     private val devices: kotlin.collections.MutableList<Device> = java.util.ArrayList()
     private var adapter: DeviceListAdapter? = null
+    private var mBluetoothGatt: BluetoothGatt? = null
+    private var HEART_RATE_SERVICE_UUID: UUID? = null
+    private var HEART_RATE_MEASUREMENT_CHAR_UUID: UUID? = null
+
 
     companion object {
         const val SCAN_PERIOD: Long = 3000
@@ -75,8 +80,7 @@ class MainActivity : AppCompatActivity() {
 
         private fun addScanResult(result: ScanResult) {
             val device = result.device
-
-            devices.add(Device(if (device.name == null) "no name" else device.name, device.address, result.rssi, true))
+            devices.add(Device(if (device.name == null) "no name" else device.name, device.address, result.rssi, device,true))
         }
     }
 
@@ -89,6 +93,34 @@ class MainActivity : AppCompatActivity() {
             adapter = DeviceListAdapter(this, devices)
             listView.adapter = adapter
 
+            listView.setOnItemClickListener { _, _, position: Int, _ ->
+                connectToDevice(position)
+            }
+        }
+    }
+
+    private fun connectToDevice(position: Int) {
+        val device = devices[position].bluetoothDevice
+        val gattClientCallback = GattClientCallback()
+        mBluetoothGatt = device.connectGatt(this, false, gattClientCallback)
+
+        Toast.makeText(this, device.name, Toast.LENGTH_SHORT).show()
+
+        for (gattService in mBluetoothGatt!!.services) {
+            Log.d("DBG", "Service ${gattService.uuid}")
+
+            if (gattService.uuid == HEART_RATE_SERVICE_UUID) {
+                Log.d("DBG", "BINGO!!!")
+
+                for (gattCharacteristic in gattService.characteristics)
+                    Log.d("DBG", "Characteristic ${gattCharacteristic.uuid}")
+
+                /* setup the system for the notification messages */
+                val characteristic = mBluetoothGatt!!.getService(HEART_RATE_SERVICE_UUID)
+                        .getCharacteristic(HEART_RATE_MEASUREMENT_CHAR_UUID)
+
+                mBluetoothGatt!!.setCharacteristicNotification(characteristic, true)
+            }
         }
     }
 
