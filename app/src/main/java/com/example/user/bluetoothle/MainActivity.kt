@@ -1,7 +1,6 @@
 package com.example.user.bluetoothle
 
 import android.bluetooth.BluetoothAdapter
-import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.*
@@ -24,12 +23,19 @@ class MainActivity : AppCompatActivity() {
     private val devices: kotlin.collections.MutableList<Device> = java.util.ArrayList()
     private var adapter: DeviceListAdapter? = null
     private var mBluetoothGatt: BluetoothGatt? = null
-    private var HEART_RATE_SERVICE_UUID: UUID? = null
-    private var HEART_RATE_MEASUREMENT_CHAR_UUID: UUID? = null
-
 
     companion object {
         const val SCAN_PERIOD: Long = 3000
+        val HEART_RATE_SERVICE_UUID = convertFromInteger(0x180D)
+        val HEART_RATE_MEASUREMENT_CHAR_UUID = convertFromInteger(0x2A37)
+        val CLIENT_CHARACTERISTIC_CONFIG_UUID = convertFromInteger(0x2902)
+
+        private fun convertFromInteger(i: Int): UUID {
+            val MSB = 0x0000000000001000L
+            val LSB = -0x7fffff7fa064cb05L
+            val value = (i and -0x1).toLong()
+            return UUID(MSB or (value shl 32), LSB)
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,6 +45,12 @@ class MainActivity : AppCompatActivity() {
         val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
         mBluetoothAdapter = bluetoothManager.adapter
 
+        adapter = DeviceListAdapter(this, devices)
+        listView.adapter = adapter
+
+        listView.setOnItemClickListener { _, _, position: Int, _ ->
+            connectToDevice(position)
+        }
 
         buttonStartScan.setOnClickListener {
             startScan()
@@ -80,7 +92,12 @@ class MainActivity : AppCompatActivity() {
 
         private fun addScanResult(result: ScanResult) {
             val device = result.device
-            devices.add(Device(if (device.name == null) "no name" else device.name, device.address, result.rssi, device,true))
+
+            val finResult = Device(if (device.name == null) "no name" else device.name, device.address, result.rssi, device,true)
+
+            if (!devices.contains(finResult)) {
+                devices.add(finResult)
+            }
         }
     }
 
@@ -90,38 +107,17 @@ class MainActivity : AppCompatActivity() {
         if(devices.size == 0) {
             Toast.makeText(this, getString(R.string.noDevices), Toast.LENGTH_SHORT).show()
         } else {
-            adapter = DeviceListAdapter(this, devices)
-            listView.adapter = adapter
-
-            listView.setOnItemClickListener { _, _, position: Int, _ ->
-                connectToDevice(position)
-            }
+            adapter!!.notifyDataSetChanged()
+            Toast.makeText(this, getString(R.string.scanSucc), Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun connectToDevice(position: Int) {
         val device = devices[position].bluetoothDevice
-        val gattClientCallback = GattClientCallback()
+        val gattClientCallback = GattClientCallback(this)
         mBluetoothGatt = device.connectGatt(this, false, gattClientCallback)
 
         Toast.makeText(this, device.name, Toast.LENGTH_SHORT).show()
-
-        for (gattService in mBluetoothGatt!!.services) {
-            Log.d("DBG", "Service ${gattService.uuid}")
-
-            if (gattService.uuid == HEART_RATE_SERVICE_UUID) {
-                Log.d("DBG", "BINGO!!!")
-
-                for (gattCharacteristic in gattService.characteristics)
-                    Log.d("DBG", "Characteristic ${gattCharacteristic.uuid}")
-
-                /* setup the system for the notification messages */
-                val characteristic = mBluetoothGatt!!.getService(HEART_RATE_SERVICE_UUID)
-                        .getCharacteristic(HEART_RATE_MEASUREMENT_CHAR_UUID)
-
-                mBluetoothGatt!!.setCharacteristicNotification(characteristic, true)
-            }
-        }
     }
 
     private fun hasPermissions(): Boolean {
@@ -135,5 +131,11 @@ class MainActivity : AppCompatActivity() {
             return true // assuming that the user grants permission
         }
         return true
+    }
+
+    fun setBpmView(value : Int) {
+        runOnUiThread{
+            textViewBPM.text = " $value bpm"
+        }
     }
 }
