@@ -3,4 +3,9 @@
     <string name="startScan">Start Scanning</string>
     <string name="noDevices">No devices found</string>
     <string name="scanSucc">Scan successful</string>
+    <string name="time">Time</string>
+    <string name="bpm">BPM</string>
+    <string name="heartBeat">Heart Beat Rate</string>
+    <string name="bpmNumber">%d bpm</string>
+    <string name="deviceConnected">%s connected</string>
 </resources>

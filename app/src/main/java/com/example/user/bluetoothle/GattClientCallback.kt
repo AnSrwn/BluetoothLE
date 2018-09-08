@@ -6,7 +6,7 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattCharacteristic.FORMAT_UINT8
 import android.bluetooth.BluetoothGattDescriptor
 
-class GattClientCallback(val main: MainActivity): BluetoothGattCallback() {
+class GattClientCallback(private val main: MainActivity): BluetoothGattCallback() {
 
     override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
         super.onConnectionStateChange(gatt, status, newState)

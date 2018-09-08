@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.*
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
@@ -13,16 +14,17 @@ import android.util.Log
 import android.widget.Toast
 import kotlinx.android.synthetic.main.activity_main.*
 import java.util.*
-
+import kotlin.collections.ArrayList
 
 class MainActivity : AppCompatActivity() {
 
     private var mBluetoothAdapter: BluetoothAdapter? = null
     private var mScanCallback: ScanCallback? = null
     private var mBluetoothLeScanner: BluetoothLeScanner? = null
+    private var mBluetoothGatt: BluetoothGatt? = null
     private val devices: kotlin.collections.MutableList<Device> = java.util.ArrayList()
     private var adapter: DeviceListAdapter? = null
-    private var mBluetoothGatt: BluetoothGatt? = null
+    private var dataBPM: MutableList<Int> = ArrayList()
 
     companion object {
         const val SCAN_PERIOD: Long = 3000
@@ -31,10 +33,10 @@ class MainActivity : AppCompatActivity() {
         val CLIENT_CHARACTERISTIC_CONFIG_UUID = convertFromInteger(0x2902)
 
         private fun convertFromInteger(i: Int): UUID {
-            val MSB = 0x0000000000001000L
-            val LSB = -0x7fffff7fa064cb05L
+            val msb = 0x0000000000001000L
+            val lsb = -0x7fffff7fa064cb05L
             val value = (i and -0x1).toLong()
-            return UUID(MSB or (value shl 32), LSB)
+            return UUID(msb or (value shl 32), lsb)
         }
     }
 
@@ -54,6 +56,11 @@ class MainActivity : AppCompatActivity() {
 
         buttonStartScan.setOnClickListener {
             startScan()
+        }
+
+        textViewBPM.setOnClickListener {
+            startActivity(Intent(this, GraphActivity::class.java)
+                    .putExtra("data", dataBPM.toIntArray()))
         }
     }
 
@@ -117,15 +124,14 @@ class MainActivity : AppCompatActivity() {
         val gattClientCallback = GattClientCallback(this)
         mBluetoothGatt = device.connectGatt(this, false, gattClientCallback)
 
-        Toast.makeText(this, device.name, Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, getString(R.string.deviceConnected, device.name), Toast.LENGTH_SHORT).show()
     }
 
     private fun hasPermissions(): Boolean {
         if (mBluetoothAdapter == null || !mBluetoothAdapter!!.isEnabled) {
             Log.d("DBG", "No Bluetooth LE capability")
             return false
-        } else if (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) !=
-                PackageManager.PERMISSION_GRANTED) {
+        } else if (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             Log.d("DBG", "No fine location access")
             requestPermissions(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION), 1)
             return true // assuming that the user grants permission
@@ -134,8 +140,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun setBpmView(value : Int) {
+        val index = dataBPM.size
+        dataBPM.add(index, value)
+
         runOnUiThread{
-            textViewBPM.text = " $value bpm"
+            textViewBPM.text = getString(R.string.bpmNumber, value)
         }
     }
 }
