@@ -13,7 +13,7 @@ class GraphActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_graph)
 
-        val intent = intent
+        //val intent = intent
         val dataBPM: IntArray = intent.getIntArrayExtra("data")
 
         val series = LineGraphSeries(data(dataBPM))
